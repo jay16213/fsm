@@ -31,8 +31,12 @@ func init() {
 		QuoteEmptyFields:          false,
 		FieldMap:                  nil,
 		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-			orgFilename, _ := os.Getwd()
-			repopath := orgFilename
+			var repopath string
+			if orgFilename, err := os.Getwd(); err != nil {
+				log.Warnf("Getwd error: %+v", err)
+			} else {
+				repopath = orgFilename
+			}
 			repopath = strings.Replace(repopath, "/bin", "", 1)
 			filename := strings.Replace(f.File, repopath, "", -1)
 			return fmt.Sprintf("%s()", f.Function), fmt.Sprintf("%s:%d", filename, f.Line)
