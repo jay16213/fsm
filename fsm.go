@@ -3,85 +3,114 @@ package fsm
 import (
 	"errors"
 	"fmt"
+	"sync"
 )
 
 type State string
-type Event string
-type HandleFunc func(*FSM, Event, Args) error
-type FuncTable map[State]HandleFunc
+type CallbackFunc func(*Event)
 
-const (
-	EVENT_ENTRY Event = "ENTRY EVENT"
-)
+type Transition struct {
+	Event string
+	From  State
+	To    State
+}
 
-type Args map[string]interface{}
+type transitionKey struct {
+	event string
+	from  State
+}
 
 type FSM struct {
-	state     State
-	funcTable FuncTable
+	// state is the current state of the FSM
+	state         State
+	callbackTable map[State]CallbackFunc
+
+	transitions map[transitionKey]Transition
+	stateMutex  sync.RWMutex
+	eventMutex  sync.Mutex
 }
 
-func NewFuncTable() (table FuncTable) {
-	table = make(map[State]HandleFunc)
-	return
-}
-
-func NewFSM(initState State, table FuncTable) (fsm *FSM, err error) {
-	fsm = new(FSM)
+func NewFSM(initState State, transitions []Transition, callbacks map[State]CallbackFunc) (*FSM, error) {
+	fsm := new(FSM)
+	fsm.transitions = make(map[transitionKey]Transition)
+	fsm.callbackTable = make(map[State]CallbackFunc)
 
 	fsm.state = initState
-	fsm.funcTable = table
-	if _, ok := table[initState]; !ok {
-		return nil, errors.New("initial state is not valid")
+
+	states := make(map[State]bool)
+	events := make(map[string]bool)
+
+	for _, transition := range transitions {
+		key := transitionKey{
+			event: transition.Event,
+			from:  transition.From,
+		}
+		if _, ok := fsm.transitions[key]; ok {
+			return nil, errors.New("Transitions has duplicate key(same event and same source state)")
+		} else {
+			fsm.transitions[key] = transition
+			states[transition.From] = true
+			states[transition.To] = true
+			events[transition.Event] = true
+		}
 	}
-	err = fsm.funcTable[fsm.state](fsm, EVENT_ENTRY, nil)
-	if err != nil {
-		return nil, err
+
+	for k, v := range callbacks {
+		fsm.callbackTable[k] = v
 	}
+
 	return fsm, nil
 }
 
+// Current get the current state of fsm
 func (fsm *FSM) Current() State {
+	fsm.stateMutex.RLock()
+	defer fsm.stateMutex.RUnlock()
 	return fsm.state
 }
 
-func (fsm *FSM) Check(state State) bool {
+// IsCurrent return true if the current state of fsm is equal to state
+func (fsm *FSM) IsCurrent(state State) bool {
+	fsm.stateMutex.RLock()
+	defer fsm.stateMutex.RUnlock()
 	return fsm.state == state
 }
 
-func (fsm *FSM) AddState(state State, callback HandleFunc) {
-	fsm.funcTable[state] = callback
-}
+func (fsm *FSM) SendEvent(event *Event) error {
+	current := fsm.Current()
 
-func (fsm *FSM) SendEvent(event Event, args Args) (err error) {
-	err = fsm.funcTable[fsm.state](fsm, event, args)
-	return
+	if callback, ok := fsm.callbackTable[current]; ok {
+		callback(event)
+		return nil
+	} else {
+		return fmt.Errorf("State %s does not exists", current)
+	}
 }
 
 /* args is for ENTRY params*/
-func (fsm *FSM) Transfer(trans State, args Args) error {
-	if _, ok := fsm.funcTable[trans]; !ok {
-		return fmt.Errorf("Fsm Tranfer Error : State %s is not exist", trans)
+func (fsm *FSM) Transition(next State, args map[string]interface{}) error {
+	if _, ok := fsm.callbackTable[next]; !ok {
+		return fmt.Errorf("State %s does not exists", next)
 	}
-	if trans != fsm.state {
-		fsm.state = trans
-		err := fsm.funcTable[fsm.state](fsm, EVENT_ENTRY, args)
-		if err != nil {
-			return err
-		}
+
+	event := &Event{
+		Name: EntryEvent,
+		Args: make(map[string]interface{}),
 	}
-	return nil
+
+	for k, v := range args {
+		event.Args[k] = v
+	}
+
+	if !fsm.IsCurrent(next) {
+		return fmt.Errorf("No transition")
+	} else {
+		return fsm.SendEvent(event)
+	}
 }
 
-func (fsm *FSM) AllStates() (states []State) {
-	for key := range fsm.funcTable {
-		states = append(states, key)
-	}
-	return
-}
-
-func (fsm *FSM) PrintStates() {
-	for key := range fsm.funcTable {
-		fmt.Println(key)
-	}
+func (fsm *FSM) SetState(state State) {
+	fsm.stateMutex.Lock()
+	defer fsm.stateMutex.Unlock()
+	fsm.state = state
 }
