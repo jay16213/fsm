@@ -1,62 +1,37 @@
 package fsm
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 )
 
 type State string
-type CallbackFunc func(*Event)
+type Event string
+type Args map[string]interface{}
 
-type Transition struct {
-	Event string
-	From  State
-	To    State
-}
+type CallbackFunc func(*FSM, Event, Args)
+type Callbacks map[State]CallbackFunc
 
-type transitionKey struct {
-	event string
-	from  State
-}
+const (
+	EntryEvent Event = "Entry event"
+)
 
 type FSM struct {
 	// state is the current state of the FSM
 	state         State
 	callbackTable map[State]CallbackFunc
 
-	transitions map[transitionKey]Transition
-	stateMutex  sync.RWMutex
-	eventMutex  sync.Mutex
+	stateMutex sync.RWMutex
 }
 
-func NewFSM(initState State, transitions []Transition, callbacks map[State]CallbackFunc) (*FSM, error) {
+func NewFSM(initState State, callbacks Callbacks) (*FSM, error) {
 	fsm := new(FSM)
-	fsm.transitions = make(map[transitionKey]Transition)
-	fsm.callbackTable = make(map[State]CallbackFunc)
 
+	fsm.callbackTable = make(map[State]CallbackFunc)
 	fsm.state = initState
 
-	states := make(map[State]bool)
-	events := make(map[string]bool)
-
-	for _, transition := range transitions {
-		key := transitionKey{
-			event: transition.Event,
-			from:  transition.From,
-		}
-		if _, ok := fsm.transitions[key]; ok {
-			return nil, errors.New("Transitions has duplicate key(same event and same source state)")
-		} else {
-			fsm.transitions[key] = transition
-			states[transition.From] = true
-			states[transition.To] = true
-			events[transition.Event] = true
-		}
-	}
-
-	for k, v := range callbacks {
-		fsm.callbackTable[k] = v
+	for state, callback := range callbacks {
+		fsm.callbackTable[state] = callback
 	}
 
 	return fsm, nil
@@ -76,11 +51,11 @@ func (fsm *FSM) IsCurrent(state State) bool {
 	return fsm.state == state
 }
 
-func (fsm *FSM) SendEvent(event *Event) error {
+func (fsm *FSM) SendEvent(event Event, args Args) error {
 	current := fsm.Current()
 
 	if callback, ok := fsm.callbackTable[current]; ok {
-		callback(event)
+		callback(fsm, event, args)
 		return nil
 	} else {
 		return fmt.Errorf("State %s does not exists", current)
@@ -88,24 +63,16 @@ func (fsm *FSM) SendEvent(event *Event) error {
 }
 
 /* args is for ENTRY params*/
-func (fsm *FSM) Transition(next State, args map[string]interface{}) error {
+func (fsm *FSM) Transition(next State, args Args) error {
 	if _, ok := fsm.callbackTable[next]; !ok {
 		return fmt.Errorf("State %s does not exists", next)
 	}
 
-	event := &Event{
-		Name: EntryEvent,
-		Args: make(map[string]interface{}),
-	}
-
-	for k, v := range args {
-		event.Args[k] = v
-	}
-
-	if !fsm.IsCurrent(next) {
+	if fsm.IsCurrent(next) {
 		return fmt.Errorf("No transition")
 	} else {
-		return fsm.SendEvent(event)
+		fsm.SetState(next)
+		return fsm.SendEvent(EntryEvent, args)
 	}
 }
 

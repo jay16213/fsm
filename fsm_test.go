@@ -16,24 +16,18 @@ const (
 	Close string = "Close"
 )
 
-func open(event *fsm.Event) {
-	fmt.Printf("open event callback: %+v\n", event)
-}
-
 func TestInitFSM(t *testing.T) {
-	fsm.NewFSM(Closed,
-		[]fsm.Transition{
-			{
-				Event: Open,
-				From:  Closed,
-				To:    Opened,
-			},
-			{
-				Event: Close,
-				From:  Opened,
-				To:    Closed,
-			},
-		}, map[fsm.State]fsm.CallbackFunc{
-			Opened: open,
-		})
+	f, err := fsm.NewFSM(Closed, fsm.Callbacks{
+		Opened: func(sm *fsm.FSM, event fsm.Event, args fsm.Args) {
+			fmt.Printf("event [%+v] at state [%+v]\n", event, sm.Current())
+		},
+	})
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if err = f.Transition(Opened, nil); err != nil {
+		t.Error(err)
+	}
 }
