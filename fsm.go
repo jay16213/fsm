@@ -68,12 +68,8 @@ func (fsm *FSM) Transition(next State, args Args) error {
 		return fmt.Errorf("State %s does not exists", next)
 	}
 
-	if fsm.IsCurrent(next) {
-		return fmt.Errorf("No transition")
-	} else {
-		fsm.SetState(next)
-		return fsm.SendEvent(EntryEvent, args)
-	}
+	fsm.SetState(next)
+	return fsm.SendEvent(EntryEvent, args)
 }
 
 func (fsm *FSM) SetState(state State) {
