@@ -18,9 +18,12 @@ const (
 
 type FSM struct {
 	// state is the current state of the FSM
-	state         State
+	state State
+
+	// callbackTable store one callback function for one state
 	callbackTable map[State]CallbackFunc
 
+	// stateMutex ensure that all operation to state is thread-safe
 	stateMutex sync.RWMutex
 }
 
@@ -51,6 +54,7 @@ func (fsm *FSM) IsCurrent(state State) bool {
 	return fsm.state == state
 }
 
+// SendEvent triggers a callback for current state with event and optional args
 func (fsm *FSM) SendEvent(event Event, args Args) error {
 	current := fsm.Current()
 
@@ -62,7 +66,7 @@ func (fsm *FSM) SendEvent(event Event, args Args) error {
 	}
 }
 
-/* args is for ENTRY params*/
+// Transition will transfer fsm current state to next, then trigger a EntryEvent callback for next state
 func (fsm *FSM) Transition(next State, args Args) error {
 	if _, ok := fsm.callbackTable[next]; !ok {
 		return fmt.Errorf("State %s does not exists", next)
@@ -72,8 +76,9 @@ func (fsm *FSM) Transition(next State, args Args) error {
 	return fsm.SendEvent(EntryEvent, args)
 }
 
-func (fsm *FSM) SetState(state State) {
+// SetState set fsm current state to next
+func (fsm *FSM) SetState(next State) {
 	fsm.stateMutex.Lock()
 	defer fsm.stateMutex.Unlock()
-	fsm.state = state
+	fsm.state = next
 }
