@@ -2,83 +2,104 @@ package fsm
 
 import (
 	"fmt"
-	"sync"
 )
 
-type State string
-type Event string
-type Args map[string]interface{}
+type StateType string
+type EventType string
+type ArgsType map[string]interface{}
 
-type CallbackFunc func(*FSM, Event, Args)
-type Callbacks map[State]CallbackFunc
+type Callback func(*State, EventType, ArgsType)
+type Callbacks map[StateType]Callback
 
+// Transition defines a transition
+// that a Event is triggered at From state,
+// and transfer to To state after the Event
+type Transition struct {
+	Event EventType
+	From  StateType
+	To    StateType
+}
+
+type Transitions []Transition
+
+type eventKey struct {
+	Event EventType
+	From  StateType
+}
+
+// Entry/Exit event are defined by fsm package
 const (
-	EntryEvent Event = "Entry event"
+	EntryEvent EventType = "Entry event"
+	ExitEvent  EventType = "Exit event"
 )
 
 type FSM struct {
-	// state is the current state of the FSM
-	state State
-
-	// callbackTable store one callback function for one state
-	callbackTable map[State]CallbackFunc
-
-	// stateMutex ensure that all operation to state is thread-safe
-	stateMutex sync.RWMutex
+	// transitions stores one transition for each event
+	transitions map[eventKey]Transition
+	// callbacks stores one callback function for one state
+	callbacks map[StateType]Callback
 }
 
-func NewFSM(initState State, callbacks Callbacks) (*FSM, error) {
-	fsm := new(FSM)
-
-	fsm.callbackTable = make(map[State]CallbackFunc)
-	fsm.state = initState
-
-	for state, callback := range callbacks {
-		fsm.callbackTable[state] = callback
+// NewFSM create a new FSM object then registers transitions and callbacks to it
+func NewFSM(transitions Transitions, callbacks Callbacks) (*FSM, error) {
+	fsm := &FSM{
+		transitions: make(map[eventKey]Transition),
+		callbacks:   make(map[StateType]Callback),
 	}
 
+	allStates := make(map[StateType]bool)
+
+	for _, transition := range transitions {
+		key := eventKey{
+			Event: transition.Event,
+			From:  transition.From,
+		}
+		if _, ok := fsm.transitions[key]; ok {
+			return nil, fmt.Errorf("Duplicate transition: %+v", transition)
+		} else {
+			fsm.transitions[key] = transition
+			allStates[transition.From] = true
+			allStates[transition.To] = true
+		}
+	}
+
+	for state, callback := range callbacks {
+		if _, ok := allStates[state]; !ok {
+			return nil, fmt.Errorf("Unknown state: %+v", state)
+		} else {
+			fsm.callbacks[state] = callback
+		}
+	}
 	return fsm, nil
 }
 
-// Current get the current state of fsm
-func (fsm *FSM) Current() State {
-	fsm.stateMutex.RLock()
-	defer fsm.stateMutex.RUnlock()
-	return fsm.state
-}
+// SendEvent triggers a callback with an event, and do transition after callback if need
+// There are 3 types of callback:
+//  - on exit callback: call when fsm leave one state, with ExitEvent event
+//  - event callback: call when user trigger a user-defined event
+//  - on entry callback: call when fsm enter one state, with EntryEvent event
+func (fsm *FSM) SendEvent(state *State, event EventType, args ArgsType) error {
+	key := eventKey{
+		From:  state.Current(),
+		Event: event,
+	}
 
-// IsCurrent return true if the current state of fsm is equal to state
-func (fsm *FSM) IsCurrent(state State) bool {
-	fsm.stateMutex.RLock()
-	defer fsm.stateMutex.RUnlock()
-	return fsm.state == state
-}
+	if trans, ok := fsm.transitions[key]; ok {
+		// exit callback
+		if trans.From != trans.To {
+			fsm.callbacks[trans.From](state, ExitEvent, args)
+		}
 
-// SendEvent triggers a callback for current state with event and optional args
-func (fsm *FSM) SendEvent(event Event, args Args) error {
-	current := fsm.Current()
+		// event callback
+		fsm.callbacks[trans.From](state, event, args)
 
-	if callback, ok := fsm.callbackTable[current]; ok {
-		callback(fsm, event, args)
+		// entry callback
+		if trans.From != trans.To {
+			state.Set(trans.To)
+			fsm.callbacks[trans.To](state, EntryEvent, args)
+		}
 		return nil
 	} else {
-		return fmt.Errorf("State %s does not exists", current)
+		return fmt.Errorf("Unknown transition[From: %s, Event: %s]", state.Current(), event)
 	}
-}
-
-// Transition will transfer fsm current state to next, then trigger a EntryEvent callback for next state
-func (fsm *FSM) Transition(next State, args Args) error {
-	if _, ok := fsm.callbackTable[next]; !ok {
-		return fmt.Errorf("State %s does not exists", next)
-	}
-
-	fsm.SetState(next)
-	return fsm.SendEvent(EntryEvent, args)
-}
-
-// SetState set fsm current state to next
-func (fsm *FSM) SetState(next State) {
-	fsm.stateMutex.Lock()
-	defer fsm.stateMutex.Unlock()
-	fsm.state = next
 }
