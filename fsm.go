@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-type StateType string
 type EventType string
 type ArgsType map[string]interface{}
 

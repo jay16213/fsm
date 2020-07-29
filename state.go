@@ -2,27 +2,31 @@ package fsm
 
 import "sync"
 
+type StateType string
+
+// State is a thread-safe structure that represents the state of a object
+// and it can be used for FSM
 type State struct {
-	// current is the current state of the FSM
+	// current state of the State object
 	current StateType
-	// stateMutex ensure that all operation to current is thread-safe
+	// stateMutex ensures that all operations to current is thread-safe
 	stateMutex sync.RWMutex
 }
 
-// NewState create a State object with current state equal to initState
+// NewState create a State object with current state set to initState
 func NewState(initState StateType) *State {
 	s := &State{current: initState}
 	return s
 }
 
-// Current get the current state of fsm
+// Current get the current state
 func (state *State) Current() StateType {
 	state.stateMutex.RLock()
 	defer state.stateMutex.RUnlock()
 	return state.current
 }
 
-// Is return true if the current state of fsm is equal to state
+// Is return true if the current state is equal to target
 func (state *State) Is(target StateType) bool {
 	state.stateMutex.RLock()
 	defer state.stateMutex.RUnlock()
