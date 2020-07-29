@@ -2,6 +2,8 @@ package fsm
 
 import (
 	"fmt"
+	"os"
+	"strings"
 )
 
 type StateType string
@@ -101,5 +103,38 @@ func (fsm *FSM) SendEvent(state *State, event EventType, args ArgsType) error {
 		return nil
 	} else {
 		return fmt.Errorf("Unknown transition[From: %s, Event: %s]", state.Current(), event)
+	}
+}
+
+// ExportDot export fsm in dot format to outfile, which can be visualize by graphviz
+func ExportDot(fsm *FSM, outfile string) error {
+	dot := `digraph FSM {
+	rankdir=LR
+	size="100"
+    node[width=1 fixedsize=false shape=ellipse style=filled fillcolor="skyblue"]
+	`
+
+	for _, trans := range fsm.transitions {
+		link := fmt.Sprintf("\t%s -> %s [label=\"%s\"]", trans.From, trans.To, trans.Event)
+		dot = dot + "\r\n" + link
+	}
+
+	dot = dot + "\r\n}\n"
+
+	if !strings.HasSuffix(outfile, ".dot") {
+		outfile = fmt.Sprintf("%s.dot", outfile)
+	}
+
+	if file, err := os.Create(outfile); err != nil {
+		return err
+	} else {
+		if _, err = file.WriteString(dot); err != nil {
+			return err
+		}
+		fmt.Printf("Output the following contents to \"%s\"\n", outfile)
+		fmt.Println("===============begin===============")
+		fmt.Println(dot)
+		fmt.Println("================end================")
+		return file.Close()
 	}
 }
