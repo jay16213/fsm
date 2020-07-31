@@ -130,10 +130,7 @@ func ExportDot(fsm *FSM, outfile string) error {
 		if _, err = file.WriteString(dot); err != nil {
 			return err
 		}
-		fmt.Printf("Output the following contents to \"%s\"\n", outfile)
-		fmt.Println("===============begin===============")
-		fmt.Println(dot)
-		fmt.Println("================end================")
+		fmt.Printf("Output the FSM to \"%s\"\n", outfile)
 		return file.Close()
 	}
 }
