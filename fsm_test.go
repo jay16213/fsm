@@ -2,75 +2,101 @@ package fsm_test
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"free5gc/lib/fsm"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const (
-	ACITVE    fsm.State = "ACTIVE"
-	INACITVE  fsm.State = "INACITVE"
-	EXCEPTION fsm.State = "EXCEPTION"
+	Opened fsm.StateType = "Opened"
+	Closed fsm.StateType = "Closed"
 )
 
 const (
-	MESSAGE fsm.Event = "MESSAGE"
+	Open  fsm.EventType = "Open"
+	Close fsm.EventType = "Close"
 )
 
-func Activefunc(sm *fsm.FSM, event fsm.Event, args fsm.Args) error {
-	switch event {
-	case fsm.EVENT_ENTRY:
-		fmt.Printf("Enter Active state\n")
-	case MESSAGE:
-		a := args["Message"].(string)
-		fmt.Printf("Active : %s\n", a)
-	}
-	return nil
-}
-func Inactivefunc(sm *fsm.FSM, event fsm.Event, args fsm.Args) error {
-	switch event {
-	case fsm.EVENT_ENTRY:
-		fmt.Printf("Enter Inactive state\n")
-	case MESSAGE:
-		a := args["Message"].(string)
-		fmt.Printf("Inactive : %s\n", a)
-	}
-	return nil
-}
-func Exceptionfunc(sm *fsm.FSM, event fsm.Event, args fsm.Args) error {
-	switch event {
-	case fsm.EVENT_ENTRY:
-		param1 := args["Init"].(string)
-		fmt.Printf("Enter Exception state with param %s\n", param1)
-	case MESSAGE:
-		a := args["Message"].(string)
-		fmt.Printf("Exception : %s\n", a)
-	}
-	return nil
+func TestState(t *testing.T) {
+	s := fsm.NewState(Closed)
+
+	assert.Equal(t, Closed, s.Current(), "Current() failed")
+	assert.True(t, s.Is(Closed), "Is() failed")
+
+	s.Set(Opened)
+
+	assert.Equal(t, Opened, s.Current(), "Current() failed")
+	assert.True(t, s.Is(Opened), "Is() failed")
 }
 
-func TestInitFSM(t *testing.T) {
-	table := fsm.NewFuncTable()
-	table[ACITVE] = Activefunc
-	table[INACITVE] = Inactivefunc
-	sm, err := fsm.NewFSM(ACITVE, table)
-	assert.Equal(t, nil, err)
-	a := "hahaha"
-	err = sm.SendEvent(MESSAGE, fsm.Args{"Message": a})
-	assert.Equal(t, nil, err)
-	err = sm.Transfer(INACITVE, nil)
-	assert.Equal(t, nil, err)
-	err = sm.SendEvent(MESSAGE, fsm.Args{"Message": a})
-	assert.Equal(t, nil, err)
-	err = sm.Transfer(EXCEPTION, fsm.Args{"Message": "p1"})
-	assert.Equal(t, true, err != nil)
-	sm.AddState(EXCEPTION, Exceptionfunc)
-	err = sm.Transfer(EXCEPTION, fsm.Args{"Init": "p1"})
-	assert.Equal(t, nil, err)
-	err = sm.SendEvent(MESSAGE, fsm.Args{"Message": a})
-	assert.Equal(t, nil, err)
-	err = sm.Transfer("asd", nil)
-	assert.Equal(t, true, err != nil)
-	sm.PrintStates()
-	assert.Equal(t, true, sm.Check(EXCEPTION))
+func TestFSM(t *testing.T) {
+	f, err := fsm.NewFSM(fsm.Transitions{
+		{Event: Open, From: Closed, To: Opened},
+		{Event: Close, From: Opened, To: Closed},
+		{Event: Open, From: Opened, To: Opened},
+		{Event: Close, From: Closed, To: Closed},
+	}, fsm.Callbacks{
+		Opened: func(state *fsm.State, event fsm.EventType, args fsm.ArgsType) {
+			fmt.Printf("event [%+v] at state [%+v]\n", event, state.Current())
+		},
+		Closed: func(state *fsm.State, event fsm.EventType, args fsm.ArgsType) {
+			fmt.Printf("event [%+v] at state [%+v]\n", event, state.Current())
+		},
+	})
+
+	s := fsm.NewState(Closed)
+
+	assert.Nil(t, err, "NewFSM() failed")
+
+	assert.Nil(t, f.SendEvent(s, Open, fsm.ArgsType{"TestArg": "test arg"}), "SendEvent() failed")
+	assert.Nil(t, f.SendEvent(s, Close, fsm.ArgsType{"TestArg": "test arg"}), "SendEvent() failed")
+	assert.True(t, s.Is(Closed), "Transition failed")
+
+	fakeEvent := fsm.EventType("fake event")
+	assert.EqualError(t, f.SendEvent(s, fakeEvent, nil),
+		fmt.Sprintf("Unknown transition[From: %s, Event: %s]", s.Current(), fakeEvent))
+}
+
+func TestFSMInitFail(t *testing.T) {
+	duplicateTrans := fsm.Transition{
+		Event: Close, From: Opened, To: Closed,
+	}
+	_, err := fsm.NewFSM(fsm.Transitions{
+		{Event: Open, From: Closed, To: Opened},
+		duplicateTrans,
+		duplicateTrans,
+		{Event: Open, From: Opened, To: Opened},
+		{Event: Close, From: Closed, To: Closed},
+	}, fsm.Callbacks{
+		Opened: func(state *fsm.State, event fsm.EventType, args fsm.ArgsType) {
+			fmt.Printf("event [%+v] at state [%+v]\n", event, state.Current())
+		},
+		Closed: func(state *fsm.State, event fsm.EventType, args fsm.ArgsType) {
+			fmt.Printf("event [%+v] at state [%+v]\n", event, state.Current())
+		},
+	})
+
+	assert.EqualError(t, err, fmt.Sprintf("Duplicate transition: %+v", duplicateTrans))
+
+	fakeState := fsm.StateType("fake state")
+
+	_, err = fsm.NewFSM(fsm.Transitions{
+		{Event: Open, From: Closed, To: Opened},
+		{Event: Close, From: Opened, To: Closed},
+		{Event: Open, From: Opened, To: Opened},
+		{Event: Close, From: Closed, To: Closed},
+	}, fsm.Callbacks{
+		Opened: func(state *fsm.State, event fsm.EventType, args fsm.ArgsType) {
+			fmt.Printf("event [%+v] at state [%+v]\n", event, state.Current())
+		},
+		Closed: func(state *fsm.State, event fsm.EventType, args fsm.ArgsType) {
+			fmt.Printf("event [%+v] at state [%+v]\n", event, state.Current())
+		},
+		fakeState: func(state *fsm.State, event fsm.EventType, args fsm.ArgsType) {
+			fmt.Printf("event [%+v] at state [%+v]\n", event, state.Current())
+		},
+	})
+
+	assert.EqualError(t, err, fmt.Sprintf("Unknown state: %+v", fakeState))
 }
