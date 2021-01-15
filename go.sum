@@ -1,9 +1,9 @@
-bitbucket.org/free5gc-team/logger_conf v0.0.0-20201212235533-db34fd2deea0 h1:2CwB/2MUImxIELTAUYTqXqQJzeynb598L98pDWRmjvs=
-bitbucket.org/free5gc-team/logger_conf v0.0.0-20201212235533-db34fd2deea0/go.mod h1:g/B6TdHhalcxn5XAu084lyzdXyaBGHWT1p3Nwcf4CEw=
-bitbucket.org/free5gc-team/logger_util v0.0.0-20201212235752-9e3276664162 h1:CmLvc3aQeeEZCDVObN7STkcwJ/DQbzbHR/A0lZLI+Pw=
-bitbucket.org/free5gc-team/logger_util v0.0.0-20201212235752-9e3276664162/go.mod h1:VleAsGvT4ny0eGvudUocEhoZuuxcSKMx5vfdBlIp480=
-bitbucket.org/free5gc-team/path_util v0.0.0-20201212235135-42ce24f2b9c9 h1:GzLy+VsNFUruyrgM5GECl6QEq2/43rZQxvrjEFWuXQI=
-bitbucket.org/free5gc-team/path_util v0.0.0-20201212235135-42ce24f2b9c9/go.mod h1:8KT1mRTxzh0STAR4juLuvsCo3y1kTUHQ9X+OIeagU4k=
+github.com/free5gc/logger_conf v0.0.0-20201212235533-db34fd2deea0 h1:2CwB/2MUImxIELTAUYTqXqQJzeynb598L98pDWRmjvs=
+github.com/free5gc/logger_conf v0.0.0-20201212235533-db34fd2deea0/go.mod h1:g/B6TdHhalcxn5XAu084lyzdXyaBGHWT1p3Nwcf4CEw=
+github.com/free5gc/logger_util v0.0.0-20201212235752-9e3276664162 h1:CmLvc3aQeeEZCDVObN7STkcwJ/DQbzbHR/A0lZLI+Pw=
+github.com/free5gc/logger_util v0.0.0-20201212235752-9e3276664162/go.mod h1:VleAsGvT4ny0eGvudUocEhoZuuxcSKMx5vfdBlIp480=
+github.com/free5gc/path_util v0.0.0-20201212235135-42ce24f2b9c9 h1:GzLy+VsNFUruyrgM5GECl6QEq2/43rZQxvrjEFWuXQI=
+github.com/free5gc/path_util v0.0.0-20201212235135-42ce24f2b9c9/go.mod h1:8KT1mRTxzh0STAR4juLuvsCo3y1kTUHQ9X+OIeagU4k=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/antonfisher/nested-logrus-formatter v1.3.0 h1:8zixYquU1Odk+vzAaAQPAdRh1ZjmUXNQ1T+dUBvlhVo=

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"bitbucket.org/free5gc-team/fsm/version"
+	"github.com/free5gc/fsm/version"
 )
 
 func TestVersion(t *testing.T) {

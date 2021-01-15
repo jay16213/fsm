@@ -15,8 +15,8 @@ pipelines:
               name: Check coding style
               size: 2x
               script:
-                - go env -w GOPRIVATE=bitbucket.org/free5gc-team/*
-                - git config --global url."git@bitbucket.org:free5gc-team/".insteadOf https://bitbucket.org/free5gc-team/
+                - go env -w GOPRIVATE=github.com/free5gc/*
+                - git config --global url."git@bitbucket.org:free5gc-team/".insteadOf https://github.com/free5gc/
                 - curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.28.0
                 - golangci-lint run ./...
           - step:
@@ -25,8 +25,8 @@ pipelines:
               name: Unit test
               size: 2x
               script:
-                - go env -w GOPRIVATE=bitbucket.org/free5gc-team/*
-                - git config --global url."git@bitbucket.org:free5gc-team/".insteadOf https://bitbucket.org/free5gc-team/
+                - go env -w GOPRIVATE=github.com/free5gc/*
+                - git config --global url."git@bitbucket.org:free5gc-team/".insteadOf https://github.com/free5gc/
                 - go get -u gotest.tools/gotestsum
                 - gotestsum ./... -v -cover -race
 
