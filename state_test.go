@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	Opened fsm.StateType = "Opened"
-	Closed fsm.StateType = "Closed"
+	Opened int = 0
+	Closed int = 1
 )
 
 const (

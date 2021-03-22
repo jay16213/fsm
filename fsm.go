@@ -10,22 +10,22 @@ type EventType string
 type ArgsType map[string]interface{}
 
 type Callback func(*State, EventType, ArgsType)
-type Callbacks map[StateType]Callback
+type Callbacks map[int]Callback
 
 // Transition defines a transition
 // that a Event is triggered at From state,
 // and transfer to To state after the Event
 type Transition struct {
 	Event EventType
-	From  StateType
-	To    StateType
+	From  int
+	To    int
 }
 
 type Transitions []Transition
 
 type eventKey struct {
 	Event EventType
-	From  StateType
+	From  int
 }
 
 // Entry/Exit event are defined by fsm package
@@ -38,17 +38,17 @@ type FSM struct {
 	// transitions stores one transition for each event
 	transitions map[eventKey]Transition
 	// callbacks stores one callback function for one state
-	callbacks map[StateType]Callback
+	callbacks map[int]Callback
 }
 
 // NewFSM create a new FSM object then registers transitions and callbacks to it
 func NewFSM(transitions Transitions, callbacks Callbacks) (*FSM, error) {
 	fsm := &FSM{
 		transitions: make(map[eventKey]Transition),
-		callbacks:   make(map[StateType]Callback),
+		callbacks:   make(map[int]Callback),
 	}
 
-	allStates := make(map[StateType]bool)
+	allStates := make(map[int]bool)
 
 	for _, transition := range transitions {
 		key := eventKey{
@@ -101,7 +101,7 @@ func (fsm *FSM) SendEvent(state *State, event EventType, args ArgsType) error {
 		}
 		return nil
 	} else {
-		return fmt.Errorf("Unknown transition[From: %s, Event: %s]", state.Current(), event)
+		return fmt.Errorf("Unknown transition[From: %d, Event: %s]", state.Current(), event)
 	}
 }
 
@@ -114,7 +114,7 @@ func ExportDot(fsm *FSM, outfile string) error {
 	`
 
 	for _, trans := range fsm.transitions {
-		link := fmt.Sprintf("\t%s -> %s [label=\"%s\"]", trans.From, trans.To, trans.Event)
+		link := fmt.Sprintf("\t%d -> %d [label=\"%s\"]", trans.From, trans.To, trans.Event)
 		dot = dot + "\r\n" + link
 	}
 
